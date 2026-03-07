@@ -23,7 +23,7 @@ export function ProcessingScreen({ jobStatus, location }) {
 
         <div className="mt-12 grid gap-4 text-left md:grid-cols-3">
           <StatusCard title="Job Status" value={jobStatus || "processing"} />
-          <StatusCard title="Engine" value="Gemini 1.5 Pro" />
+          <StatusCard title="Engine" value="Gemini 2.5 Flash" />
           <StatusCard title="Enrichment" value="Open-Meteo live climate" />
         </div>
       </div>

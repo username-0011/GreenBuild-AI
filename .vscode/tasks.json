@@ -6,7 +6,7 @@
       "type": "shell",
       "command": "python3 -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
       "options": {
-        "cwd": "${workspaceFolder}/greenbuild-ai/backend"
+        "cwd": "${workspaceFolder}/greenbuild-ai/src"
       },
       "isBackground": true,
       "problemMatcher": {
@@ -26,7 +26,7 @@
       "type": "shell",
       "command": "npm run dev -- --host 0.0.0.0 --port 5173",
       "options": {
-        "cwd": "${workspaceFolder}/greenbuild-ai/frontend"
+        "cwd": "${workspaceFolder}/greenbuild-ai/"
       },
       "isBackground": true,
       "problemMatcher": {

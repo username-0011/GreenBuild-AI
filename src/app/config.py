@@ -20,9 +20,9 @@ class Settings(BaseModel):
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ]
-    storage_file: Path = ROOT_DIR / "backend" / "storage" / "db.json"
-    report_dir: Path = ROOT_DIR / "backend" / "storage" / "reports"
-    gemini_model: str = "gemini-1.5-pro"
+    storage_file: Path = ROOT_DIR / "src" / "storage" / "db.json"
+    report_dir: Path = ROOT_DIR / "src" / "storage" / "reports"
+    gemini_model: str = "gemini-2.5-flash"
 
 
 @lru_cache

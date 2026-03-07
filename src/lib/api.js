@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8001";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 async function jsonRequest(path, options = {}) {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -29,4 +29,3 @@ export const api = {
   climate: (location) =>
     jsonRequest(`/climate?location=${encodeURIComponent(location)}`),
 };
-
