@@ -61,8 +61,11 @@ def run_analysis_job(job_id: str) -> None:
     try:
         storage.update_job(job_id, status="processing", error=None)
         climate = climate_service.fetch_climate(job["request"]["location"])
-        ranked_analysis = analysis_service.build_ranked_analysis(job["request"], climate)
-        analysis = gemini_service.enrich_analysis(job["request"], climate, ranked_analysis)
+        catalog_summary = material_catalog_service.get_summary()
+        is_default_db = catalog_summary.get("is_default", False)
+        
+        ranked_analysis = analysis_service.build_ranked_analysis(job["request"], climate, is_default_db)
+        analysis = gemini_service.enrich_analysis(job["request"], climate, ranked_analysis, is_default_db)
         result = build_result(job, climate, analysis)
         storage.save_result(job["slug"], result)
         storage.update_job(job_id, status="completed", result_ready=True)
@@ -94,6 +97,11 @@ async def upload_materials_catalog(file: UploadFile = File(...)) -> dict:
         return material_catalog_service.replace_catalog(content, file.filename)
     except CatalogValidationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/admin/materials/reset")
+def reset_materials_catalog() -> dict:
+    return material_catalog_service.reset_catalog()
 
 
 @app.post("/analyze")
@@ -141,10 +149,12 @@ def chat(slug: str, payload: ChatRequest) -> StreamingResponse:
         raise HTTPException(status_code=404, detail="Result not found")
 
     storage.append_chat_message(slug, "user", payload.message)
+    catalog_summary = material_catalog_service.get_summary()
+    is_default_db = catalog_summary.get("is_default", False)
 
     def stream() -> str: # type: ignore
         chunks = []
-        for chunk in gemini_service.stream_chat(result, payload.message):
+        for chunk in gemini_service.stream_chat(result, payload.message, is_default_db):
             chunks.append(chunk)
             yield chunk
         if chunks:

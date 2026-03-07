@@ -1,8 +1,9 @@
 import { useState } from "react";
 
-export function MaterialsAdminPanel({ catalog, error, loading, onUpload, uploadLoading }) {
+export function MaterialsAdminPanel({ catalog, error, loading, onUpload, uploadLoading, onReset }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [message, setMessage] = useState("");
+  const isDefault = catalog?.is_default === true;
 
   async function handleUpload() {
     if (!selectedFile) return;
@@ -30,9 +31,9 @@ export function MaterialsAdminPanel({ catalog, error, loading, onUpload, uploadL
 
       <div className="grid gap-6 lg:grid-cols-[0.95fr,1.05fr]">
         <div className="space-y-4">
-          <StatCard label="Rows Loaded" value={loading ? "..." : String(catalog?.row_count ?? 0)} />
-          <StatCard label="Regions" value={loading ? "..." : String(catalog?.regions?.length ?? 0)} />
-          <StatCard label="Active File" value={loading ? "..." : catalog?.filename || "Unavailable"} compact />
+          <StatCard label="Rows Loaded" value={loading ? "..." : (isDefault ? "0" : String(catalog?.row_count ?? 0))} />
+          <StatCard label="Regions" value={loading ? "..." : (isDefault ? "0" : String(catalog?.regions?.length ?? 0))} />
+          <StatCard label="Active File" value={loading ? "..." : (isDefault ? "AI Knowledge Base" : catalog?.filename || "Unavailable")} compact />
         </div>
 
         <div className="space-y-4">
@@ -53,14 +54,33 @@ export function MaterialsAdminPanel({ catalog, error, loading, onUpload, uploadL
             </label>
           </Field>
 
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!selectedFile || uploadLoading}
-            className="rounded-full border border-white/10 bg-white/5 px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:border-accent/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {uploadLoading ? "Uploading..." : "Upload Catalog"}
-          </button>
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploadLoading}
+              className="flex-1 rounded-full border border-white/10 bg-white/5 px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-white transition-all hover:border-accent/40 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {uploadLoading ? "Uploading..." : "Upload Catalog"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setMessage("");
+                try {
+                  await onReset();
+                  setMessage("Custom catalog forgotten. AI Knowledge Base active.");
+                } catch (resetError) {
+                  setMessage(resetError.message || "Failed to reset catalog.");
+                }
+              }}
+              disabled={uploadLoading}
+              className="rounded-full border border-red-500/30 bg-red-500/10 px-6 py-4 text-[11px] font-bold uppercase tracking-widest text-red-200 transition-all hover:border-red-500/50 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+              title="Remove uploaded catalog and revert to default"
+            >
+              Reset
+            </button>
+          </div>
 
           {(message || error) && (
             <div className="rounded-[24px] border border-accent/20 bg-accent/5 px-5 py-4 text-sm leading-relaxed text-white/70">

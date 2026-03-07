@@ -88,6 +88,21 @@ function LandingPage() {
     }
   }
 
+  async function handleCatalogReset() {
+    setCatalogUploadLoading(true);
+    try {
+      const data = await api.resetMaterialsCatalog();
+      setCatalog(data);
+      setCatalogError("");
+      return data;
+    } catch (error) {
+      setCatalogError(error.message || "Reset failed.");
+      throw error;
+    } finally {
+      setCatalogUploadLoading(false);
+    }
+  }
+
   return (
     <main className="relative mx-auto max-w-7xl px-6 pb-24 pt-10 md:px-10 lg:px-12">
       <header className="flex items-center justify-end py-8">
@@ -152,6 +167,7 @@ function LandingPage() {
             climatePreview={climatePreview}
             loading={loading}
             onUploadCatalog={handleCatalogUpload}
+            onResetCatalog={handleCatalogReset}
             onPreviewClimate={handleClimatePreview}
             onSubmit={handleSubmit}
           />

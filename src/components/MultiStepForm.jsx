@@ -44,6 +44,7 @@ export function MultiStepForm({
   catalogLoading,
   catalogUploadLoading,
   onUploadCatalog,
+  onResetCatalog,
 }) {
   const [form, setForm] = useState({
     project_name: "Harbor Edge Office",
@@ -223,6 +224,7 @@ export function MultiStepForm({
           error={catalogError}
           loading={catalogLoading}
           onUpload={onUploadCatalog}
+          onReset={onResetCatalog}
           uploadLoading={catalogUploadLoading}
         />
       </div>

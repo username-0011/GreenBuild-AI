@@ -39,6 +39,7 @@ export const api = {
   climate: (location) =>
     jsonRequest(`/climate?location=${encodeURIComponent(location)}`),
   materialsCatalog: () => jsonRequest("/admin/materials"),
+  resetMaterialsCatalog: () => jsonRequest("/admin/materials/reset", { method: "POST" }),
   async uploadMaterialsCatalog(file) {
     const formData = new FormData();
     formData.append("file", file);

@@ -1,4 +1,5 @@
 import csv
+import filecmp
 import os
 import shutil
 import tempfile
@@ -47,6 +48,7 @@ class CatalogSummary:
     row_count: int
     component_counts: dict[str, int]
     regions: list[str]
+    is_default: bool
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -72,7 +74,9 @@ class MaterialCatalogService:
             raise CatalogValidationError(f"Seed catalog not found: {self.seed_file}")
         if not self.active_file.exists():
             shutil.copyfile(self.seed_file, self.active_file)
-        return self._load_catalog(self.active_file)
+        
+        is_default = filecmp.cmp(self.seed_file, self.active_file, shallow=False)
+        return self._load_catalog(self.active_file, is_default=is_default)
 
     def get_records(self) -> list[MaterialRecord]:
         with self._lock:
@@ -163,7 +167,7 @@ class MaterialCatalogService:
         try:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(content)
-            catalog = self._load_catalog(temp_path, filename=filename)
+            catalog = self._load_catalog(temp_path, filename=filename, is_default=False)
             os.replace(temp_path, self.active_file)
             with self._lock:
                 self._catalog = catalog
@@ -173,7 +177,13 @@ class MaterialCatalogService:
                 temp_path.unlink()
             raise
 
-    def _load_catalog(self, path: Path, filename: str | None = None) -> CatalogData:
+    def reset_catalog(self) -> dict[str, Any]:
+        with self._lock:
+            shutil.copyfile(self.seed_file, self.active_file)
+            self._catalog = self._load_catalog(self.active_file, is_default=True)
+            return self.get_summary()
+
+    def _load_catalog(self, path: Path, filename: str | None = None, is_default: bool = False) -> CatalogData:
         with path.open("r", encoding="utf-8-sig", newline="") as handle:
             reader = csv.DictReader(handle)
             fieldnames = set(reader.fieldnames or [])
@@ -195,6 +205,7 @@ class MaterialCatalogService:
             row_count=len(records),
             component_counts=self._component_counts(records),
             regions=sorted({record.region for record in records}),
+            is_default=is_default,
         )
         return CatalogData(records=records, summary=summary)
 

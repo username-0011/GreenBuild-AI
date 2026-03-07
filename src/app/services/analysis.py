@@ -12,7 +12,7 @@ class AnalysisService:
     def __init__(self, catalog_service: MaterialCatalogService) -> None:
         self.catalog_service = catalog_service
 
-    def build_ranked_analysis(self, payload: dict[str, Any], climate: dict[str, Any]) -> dict[str, Any]:
+    def build_ranked_analysis(self, payload: dict[str, Any], climate: dict[str, Any], is_default_db: bool = False) -> dict[str, Any]:
         components = []
         for component in COMPONENTS:
             baseline = self.catalog_service.get_baseline_material(component, payload["location"])
@@ -22,24 +22,24 @@ class AnalysisService:
             candidate_rows = self.catalog_service.get_materials_by_component(component)
 
             alternatives = [
-                self._to_alternative(component, baseline, row, candidate_rows, climate, rank=index + 1)
+                self._to_alternative(component, baseline, row, candidate_rows, climate, rank=index + 1, is_default_db=is_default_db)
                 for index, row in enumerate(ranked_rows)
             ]
             components.append(
                 {
                     "component": component,
                     "baseline": baseline.material,
-                    "climate_note": self._climate_note(component, climate, alternatives[0]["name"]),
-                    "recommendation_summary": self._component_summary(component, payload, alternatives[0]["name"]),
+                    "climate_note": self._climate_note(component, climate, alternatives[0]["name"], is_default_db),
+                    "recommendation_summary": self._component_summary(component, payload, alternatives[0]["name"], is_default_db),
                     "alternatives": alternatives,
                 }
             )
 
         top_choices = [component["alternatives"][0] for component in components]
         return {
-            "executive_summary": self._executive_summary(payload, climate, components),
+            "executive_summary": self._executive_summary(payload, climate, components, is_default_db),
             "components": components,
-            "implementation_notes": self._implementation_notes(payload),
+            "implementation_notes": self._implementation_notes(payload, is_default_db),
             "summary_metrics": {
                 "total_estimated_carbon_reduction_pct": round(
                     sum(item["carbon_reduction_pct"] for item in top_choices) / len(top_choices), 1
@@ -64,6 +64,7 @@ class AnalysisService:
         candidate_rows: list[MaterialRecord],
         climate: dict[str, Any],
         rank: int,
+        is_default_db: bool = False,
     ) -> dict[str, Any]:
         carbon_reduction = 0.0
         if baseline.carbon > 0:
@@ -77,12 +78,12 @@ class AnalysisService:
         sustainability_score = self._material_score(component, row, baseline, candidate_rows, climate)
         return {
             "name": row.material,
-            "summary": self._alternative_summary(component, row.material, rank),
+            "summary": self._alternative_summary(component, row.material, rank, is_default_db),
             "carbon_reduction_pct": round(carbon_reduction, 1),
             "cost_delta_pct": round(cost_delta, 1),
             "speed_delta_pct": round(speed_delta, 1),
             "sustainability_score": round(sustainability_score, 1),
-            "rationale": self._rationale(component, row, climate),
+            "rationale": self._rationale(component, row, climate, is_default_db),
         }
 
     def _material_score(
@@ -150,39 +151,55 @@ class AnalysisService:
         return ((value - minimum) / (maximum - minimum)) * 100
 
     def _executive_summary(
-        self, payload: dict[str, Any], climate: dict[str, Any], components: list[dict[str, Any]]
+        self, payload: dict[str, Any], climate: dict[str, Any], components: list[dict[str, Any]], is_default_db: bool
     ) -> str:
         priorities = ", ".join(
             f"{component['component']} ({component['alternatives'][0]['name']})" for component in components[:3]
         )
+        if is_default_db:
+             return f"{payload['project_name']} incorporates default industry sustainability standards for {climate['location_label']}. Top near-term substitutions include {priorities}."
         return (
             f"{payload['project_name']} uses the materials catalog as the source of truth for {climate['location_label']}. "
             f"Top near-term substitutions are {priorities}."
         )
 
-    def _component_summary(self, component: str, payload: dict[str, Any], material_name: str) -> str:
+    def _component_summary(self, component: str, payload: dict[str, Any], material_name: str, is_default_db: bool) -> str:
+        if is_default_db:
+             return f"For {component.lower()}, we recommend considering advanced sustainable alternatives for {payload['location']} to optimize carbon and cost."
         return (
             f"For {component.lower()}, {material_name} ranks highest from the CSV for {payload['location']} "
             f"after combining carbon, cost, availability, sustainability, and climate fit."
         )
 
-    def _climate_note(self, component: str, climate: dict[str, Any], material_name: str) -> str:
+    def _climate_note(self, component: str, climate: dict[str, Any], material_name: str, is_default_db: bool) -> str:
+        if is_default_db:
+             return f"{component} was evaluated against {climate['temperature_c']}C temperature, {climate['humidity_pct']}% humidity, and {climate['wind_speed_kph']} kph wind. Sustainable options must withstand these conditions."
         return (
             f"{component} was evaluated against {climate['temperature_c']}C temperature, "
             f"{climate['humidity_pct']}% humidity, and {climate['wind_speed_kph']} kph wind. "
             f"{material_name} remained the best catalog-backed option."
         )
 
-    def _alternative_summary(self, component: str, material_name: str, rank: int) -> str:
+    def _alternative_summary(self, component: str, material_name: str, rank: int, is_default_db: bool) -> str:
+        if is_default_db:
+            return f"Rank {rank} for {component.lower()}: Awaiting AI recommendation."
         return f"Rank {rank} for {component.lower()}: {material_name} based strictly on the uploaded catalog values."
 
-    def _rationale(self, component: str, row: MaterialRecord, climate: dict[str, Any]) -> str:
+    def _rationale(self, component: str, row: MaterialRecord, climate: dict[str, Any], is_default_db: bool) -> str:
+        if is_default_db:
+            return f"Industry standard evaluation for {climate['location_label']}."
         return (
             f"Selected for {component.lower()} because the CSV shows carbon {row.carbon}, cost {row.cost}, "
             f"availability {row.availability}, and sustainability {row.sustainability} for {climate['location_label']}."
         )
 
-    def _implementation_notes(self, payload: dict[str, Any]) -> list[str]:
+    def _implementation_notes(self, payload: dict[str, Any], is_default_db: bool) -> list[str]:
+        if is_default_db:
+            return [
+                "Engage local suppliers early to verify availability of specialized sustainable materials.",
+                 f"Adjust the timeline based on regional climatic impacts in {payload['location']}.",
+                 "Evaluate all suggested alternatives against local building codes before procurement."
+            ]
         return [
             "Keep the materials CSV under change control because it is the system of record for all recommendations.",
             f"Re-upload the catalog before re-analysis if supplier pricing changes for {payload['location']}.",
