@@ -12,11 +12,15 @@ import {
   YAxis,
 } from "recharts";
 
-function bestAlternatives(result) {
-  return result.components.map((component) => ({
-    component: component.component,
-    ...component.alternatives[0],
-  }));
+function bestAlternatives(result, userSelections = {}) {
+  return result.components.map((component) => {
+    const selectedAltName = userSelections[component.component] || component.alternatives[0].name;
+    const selectedAlt = component.alternatives.find(a => a.name === selectedAltName) || component.alternatives[0];
+    return {
+      component: component.component,
+      ...selectedAlt,
+    };
+  });
 }
 
 export function ResultsDashboard({
@@ -25,9 +29,87 @@ export function ResultsDashboard({
   onSelectComponent,
 }) {
   const [activeTab, setActiveTab] = useState("analysis");
+  const [userSelections, setUserSelections] = useState({});
+  const [showFinal, setShowFinal] = useState(false);
+
+  if (showFinal) {
+    return (
+      <div className="animate-reveal max-w-5xl mx-auto space-y-12 py-10">
+        <div className="text-center space-y-4">
+          <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Your Custom Build Plan</h1>
+          <p className="text-white/50 text-xl font-medium">Final selected specifications for {result.project_name}</p>
+        </div>
+        <div className="space-y-6">
+          {result.components.map(comp => {
+            const selectedAltName = userSelections[comp.component] || comp.alternatives[0].name;
+            const selectedAlt = comp.alternatives.find(a => a.name === selectedAltName) || comp.alternatives[0];
+            return (
+              <div key={comp.component} className="glass rounded-[32px] p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-white/5 hover:border-accent/20 transition-all">
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-accent/80">{comp.component}</p>
+                  <h3 className="text-3xl font-heading text-white">{selectedAlt.name}</h3>
+                  <p className="text-white/60 text-sm max-w-3xl leading-relaxed">{selectedAlt.summary}</p>
+                </div>
+                <div className="md:text-right shrink-0">
+                  <div className="flex md:flex-col md:items-end gap-6 md:gap-2">
+                    <div>
+                      <div className="text-3xl font-heading text-white">{selectedAlt.sustainability_score}</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Score</div>
+                    </div>
+                    <div>
+                      <div className={`text-xl font-bold ${selectedAlt.carbon_reduction_pct > 0 ? "text-accent" : "text-white"}`}>-{selectedAlt.carbon_reduction_pct}%</div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30">Carbon</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex justify-center flex-wrap gap-4 pt-8">
+          <button onClick={() => setShowFinal(false)} className="bg-white/5 hover:bg-white/10 text-white px-10 py-4 rounded-full font-bold transition-all uppercase tracking-widest text-sm border border-white/10">
+            Review Selections
+          </button>
+          <a
+            href={`http://127.0.0.1:8001/report/${result.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-3 rounded-full bg-white px-8 py-4 font-bold text-bg transition-all hover:scale-[1.03] active:scale-[0.98] uppercase tracking-widest text-sm"
+          >
+            <span>Export Analysis</span>
+            <DownloadIcon className="h-5 w-5" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   const selected = result.components.find((item) => item.component === selectedComponent) || result.components[0];
-  const carbonData = bestAlternatives(result);
-  const gaugeScore = selected.alternatives[0].sustainability_score;
+  const carbonData = bestAlternatives(result, userSelections);
+
+  const currentSelectionName = userSelections[selected.component] || selected.alternatives[0].name;
+  const activeAlternative = selected.alternatives.find(a => a.name === currentSelectionName) || selected.alternatives[0];
+  const gaugeScore = activeAlternative.sustainability_score;
+
+  const handleSelectAlternative = (altName) => {
+    setUserSelections(prev => ({
+      ...prev,
+      [selected.component]: altName
+    }));
+  };
+
+  const currentIndex = result.components.findIndex(c => c.component === selected.component);
+  const isLastComponent = currentIndex === result.components.length - 1;
+
+  const handleProceed = () => {
+    if (!isLastComponent) {
+      onSelectComponent(result.components[currentIndex + 1].component);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setShowFinal(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   return (
     <div className="grid gap-10 lg:grid-cols-[260px,1fr]">
@@ -37,29 +119,29 @@ export function ResultsDashboard({
           <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-accent/50">Navigator</p>
           <h2 className="mt-2 font-heading text-xl text-white leading-tight">{result.project_name}</h2>
         </div>
-        
+
         <nav className="space-y-1">
           {result.components.map((component) => {
             const active = component.component === selected.component;
-            const topAlt = component.alternatives[0];
-            const isHighSavings = topAlt.carbon_reduction_pct > 35;
-            
+            const currentName = userSelections[component.component] || component.alternatives[0].name;
+            const currentAlt = component.alternatives.find(a => a.name === currentName) || component.alternatives[0];
+            const isHighSavings = currentAlt.carbon_reduction_pct > 35;
+
             return (
               <button
                 key={component.component}
                 onClick={() => onSelectComponent(component.component)}
-                className={`group w-full rounded-2xl px-4 py-3.5 text-left transition-all duration-300 ${
-                  active
-                    ? "bg-accent/10 text-white shadow-glow"
-                    : "text-white/30 hover:bg-white/5 hover:text-white/60"
-                }`}
+                className={`group w-full rounded-2xl px-4 py-3.5 text-left transition-all duration-300 ${active
+                  ? "bg-accent/10 text-white shadow-glow"
+                  : "text-white/30 hover:bg-white/5 hover:text-white/60"
+                  }`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold truncate">{component.component}</span>
                   {isHighSavings && <div className="h-1.5 w-1.5 rounded-full bg-accent" />}
                 </div>
                 <div className={`mt-1 text-[10px] truncate opacity-50`}>
-                  {topAlt.name}
+                  {currentName}
                 </div>
               </button>
             );
@@ -70,7 +152,7 @@ export function ResultsDashboard({
       {/* Main Content */}
       <main className="space-y-10">
         {/* Header & Global Stats */}
-        <div className="animate-reveal animation-delay-100 grid gap-8 lg:grid-cols-[1fr,auto]">
+        <div className="animate-reveal animation-delay-100">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <span className="rounded-full bg-accent/10 border border-accent/20 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
@@ -81,18 +163,6 @@ export function ResultsDashboard({
               </span>
             </div>
             <h1 className="font-heading text-5xl lg:text-6xl text-white tracking-tight">{result.project_name}</h1>
-          </div>
-
-          <div className="flex items-center">
-            <a
-              href={`http://127.0.0.1:8001/report/${result.slug}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-3 rounded-full bg-white px-8 py-4 font-bold text-bg transition-all hover:scale-[1.03] active:scale-[0.98]"
-            >
-              <span>Export Analysis</span>
-              <DownloadIcon className="h-5 w-5" />
-            </a>
           </div>
         </div>
 
@@ -111,11 +181,10 @@ export function ResultsDashboard({
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`pb-5 text-sm font-bold uppercase tracking-[0.2em] transition-all ${
-                  activeTab === tab 
-                    ? "text-accent border-b-2 border-accent" 
-                    : "text-white/20 hover:text-white/50"
-                }`}
+                className={`pb-5 text-sm font-bold uppercase tracking-[0.2em] transition-all ${activeTab === tab
+                  ? "text-accent border-b-2 border-accent"
+                  : "text-white/20 hover:text-white/50"
+                  }`}
               >
                 {tab}
               </button>
@@ -130,7 +199,7 @@ export function ResultsDashboard({
                   <div className="absolute top-0 right-0 p-12 opacity-10">
                     <Gauge score={gaugeScore} size={200} />
                   </div>
-                  
+
                   <div className="relative max-w-2xl space-y-8">
                     <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase tracking-[0.5em] text-accent">Active System</p>
@@ -143,8 +212,8 @@ export function ResultsDashboard({
                         <p className="text-xl text-white font-medium">{selected.baseline}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-bold text-accent/60 uppercase tracking-widest mb-2">Recommended</p>
-                        <p className="text-xl text-white font-bold">{selected.alternatives[0].name}</p>
+                        <p className="text-[11px] font-bold text-accent/60 uppercase tracking-widest mb-2">Selected Option</p>
+                        <p className="text-xl text-white font-bold">{activeAlternative.name}</p>
                       </div>
                     </div>
 
@@ -155,8 +224,26 @@ export function ResultsDashboard({
                 {/* Alternatives Grid */}
                 <div className="grid gap-6 md:grid-cols-3">
                   {selected.alternatives.map((alt, i) => (
-                    <AlternativeCard key={alt.name} alt={alt} rank={i + 1} />
+                    <AlternativeCard
+                      key={alt.name}
+                      alt={alt}
+                      rank={i + 1}
+                      isSelected={currentSelectionName === alt.name}
+                      onSelect={() => handleSelectAlternative(alt.name)}
+                    />
                   ))}
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={handleProceed}
+                    className="flex items-center gap-3 bg-accent text-bg hover:bg-white hover:scale-[1.02] transition-all px-8 py-4 rounded-full font-bold uppercase tracking-widest text-sm shadow-glow"
+                  >
+                    {isLastComponent ? "View Final Project" : "Proceed to Next Factor"}
+                    <svg fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                    </svg>
+                  </button>
                 </div>
 
                 {/* Portfolio Context */}
@@ -172,7 +259,7 @@ export function ResultsDashboard({
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={carbonData}>
                         <XAxis dataKey="component" hide />
-                        <Tooltip cursor={{fill: 'rgba(255,255,255,0.02)'}} contentStyle={{background: '#050807', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px'}} />
+                        <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#050807', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }} />
                         <Bar dataKey="carbon_reduction_pct">
                           {carbonData.map((entry) => (
                             <Cell key={entry.component} fill={entry.component === selected.component ? "#22C55E" : "rgba(255,255,255,0.05)"} />
@@ -201,7 +288,7 @@ export function ResultsDashboard({
                   <div className="space-y-6">
                     {result.climate.next_days_summary.map((day, i) => (
                       <div key={i} className="flex items-center gap-6 group">
-                        <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-[10px] font-black text-white/20 group-hover:text-accent transition-colors">0{i+1}</div>
+                        <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white/5 text-[10px] font-black text-white/20 group-hover:text-accent transition-colors">0{i + 1}</div>
                         <p className="text-white/60 font-medium">{day}</p>
                       </div>
                     ))}
@@ -242,19 +329,20 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-function AlternativeCard({ alt, rank }) {
-  const isBest = rank === 1;
+function AlternativeCard({ alt, rank, isSelected, onSelect }) {
   return (
-    <div className={`rounded-[36px] p-8 space-y-8 transition-all duration-500 hover-lift ${
-      isBest ? "bg-accent/10 border border-accent/20" : "bg-white/5 border border-white/5"
-    }`}>
+    <button
+      onClick={onSelect}
+      className={`text-left rounded-[36px] p-8 space-y-8 transition-all duration-300 hover-lift ${isSelected ? "bg-accent/10 border-2 border-accent/40 shadow-[0_0_30px_rgba(34,197,94,0.15)] scale-[1.02] ring-1 ring-accent" : "bg-white/5 border-2 border-transparent hover:bg-white/10 hover:border-white/10"
+        }`}
+    >
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-black px-3 py-1 rounded-full ${isBest ? "bg-accent/20 text-accent" : "bg-white/10 text-white/40"}`}>
+        <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${isSelected ? "bg-accent/20 text-accent border-accent/30" : "bg-white/10 text-white/40 border-transparent"}`}>
           OPTION 0{rank}
         </span>
         <span className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em]">{alt.sustainability_score} SCORE</span>
       </div>
-      
+
       <div className="space-y-4">
         <h4 className="font-heading text-2xl text-white leading-tight">{alt.name}</h4>
         <p className="text-sm leading-relaxed text-white/50 line-clamp-3">{alt.summary}</p>
@@ -270,7 +358,7 @@ function AlternativeCard({ alt, rank }) {
           <p className={`text-lg font-bold ${alt.cost_delta_pct <= 0 ? "text-accent" : "text-white/80"}`}>{alt.cost_delta_pct > 0 ? "+" : ""}{alt.cost_delta_pct}%</p>
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -281,7 +369,7 @@ function Gauge({ score, size = 100 }) {
         <RadialBarChart innerRadius="80%" outerRadius="100%" data={[{ value: score }]} startAngle={90} endAngle={90 - (360 * score / 100)}>
           <RadialBar dataKey="value" fill="#22C55E" cornerRadius={size / 10} />
           {size > 120 && (
-             <text x="50%" y="54%" textAnchor="middle" fill="#22C55E" className="font-heading text-5xl font-bold">{score}</text>
+            <text x="50%" y="54%" textAnchor="middle" fill="#22C55E" className="font-heading text-5xl font-bold">{score}</text>
           )}
         </RadialBarChart>
       </ResponsiveContainer>
