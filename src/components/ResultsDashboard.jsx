@@ -62,29 +62,42 @@ export function ResultsDashboard({
           <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Your Custom Build Plan</h1>
           <p className="text-white/50 text-xl font-medium">Final selected specifications for {result.project_name}</p>
         </div>
-        <div className="space-y-6">
-          {result.components.map(comp => {
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {result.components.map((comp, idx) => {
             const selectedAltName = userSelections[comp.component] || comp.alternatives[0].name;
             const selectedAlt = comp.alternatives.find(a => a.name === selectedAltName) || comp.alternatives[0];
+            const rank = comp.alternatives.findIndex(a => a.name === selectedAltName) + 1;
+
             return (
-              <div key={comp.component} className="rounded-[32px] bg-[#0A0D0B] p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 border border-white/5 hover:border-accent/30 transition-all">
-                <div className="space-y-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-accent/80">{comp.component}</p>
-                  <h3 className="text-3xl font-heading text-white">{selectedAlt.name}</h3>
-                  <p className="text-white/40 text-sm max-w-3xl leading-relaxed">Rank 1 for {comp.component.toLowerCase()}: {selectedAlt.name} based strictly on the uploaded catalog values.</p>
+              <div key={comp.component} className="bg-[#0A0D0B] rounded-[36px] p-8 flex flex-col justify-between space-y-8 border-2 border-transparent hover:border-white/10 transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <span className="bg-white/10 text-white/40 border border-transparent text-[10px] font-black px-3 py-1 rounded-full uppercase">
+                    OPTION 0{rank}
+                  </span>
+                  <span className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em]">
+                    {selectedAlt.sustainability_score} SCORE
+                  </span>
                 </div>
-                <div className="md:text-right shrink-0">
-                  <div className="flex flex-col items-end gap-6">
-                    <div>
-                      <div className="text-3xl font-heading text-white leading-none text-right">{selectedAlt.sustainability_score}</div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 text-right mt-2">Score</div>
-                    </div>
-                    <div>
-                      <div className={`text-xl font-bold leading-none text-right ${selectedAlt.carbon_reduction_pct > 0 ? "text-accent" : "text-white"}`}>
-                        {selectedAlt.carbon_reduction_pct > 0 ? "-" : "+"}{Math.abs(selectedAlt.carbon_reduction_pct)}%
-                      </div>
-                      <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/30 text-right mt-2">Carbon</div>
-                    </div>
+
+                <div className="space-y-4 flex-grow">
+                  <h4 className="font-heading text-2xl text-white leading-tight">{selectedAlt.name}</h4>
+                  <p className="text-sm leading-relaxed text-white/50 line-clamp-3">
+                    Rank {rank} for {comp.component.toLowerCase()}: {selectedAlt.summary || "Awaiting AI recommendation."}
+                  </p>
+                </div>
+
+                <div className="pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Carbon</p>
+                    <p className={`text-lg font-bold ${selectedAlt.carbon_reduction_pct > 0 ? "text-accent" : "text-white"}`}>
+                      {selectedAlt.carbon_reduction_pct > 0 ? "-" : "+"}{Math.abs(selectedAlt.carbon_reduction_pct)}%
+                    </p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Cost</p>
+                    <p className={`text-lg font-bold ${selectedAlt.cost_delta_pct <= 0 ? "text-accent" : "text-white/80"}`}>
+                      {selectedAlt.cost_delta_pct > 0 ? "+" : ""}{selectedAlt.cost_delta_pct}%
+                    </p>
                   </div>
                 </div>
               </div>
