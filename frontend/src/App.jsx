@@ -8,7 +8,8 @@ import { api } from "./lib/api";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-bg text-white">
+    <div className="min-h-screen bg-bg text-white selection:bg-accent/30 selection:text-white">
+      <Backdrop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/results/:slug" element={<ResultsPage />} />
@@ -45,82 +46,69 @@ function LandingPage() {
   }
 
   return (
-    <main className="relative overflow-hidden">
-      <Backdrop />
-      <div className="relative mx-auto max-w-7xl px-5 pb-16 pt-8 md:px-8 lg:px-10">
-        <header className="flex items-center justify-between py-8">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-xl bg-accent flex items-center justify-center font-heading font-bold text-bg">G</div>
-            <div>
-              <p className="font-heading text-xl text-white tracking-tight">GreenBuild AI</p>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-white/30 font-bold">Carbon Intelligence</p>
-            </div>
+    <main className="relative mx-auto max-w-7xl px-6 pb-24 pt-10 md:px-10 lg:px-12">
+      <header className="flex items-center justify-end py-8">
+        <a
+          href="#builder"
+          className="rounded-full bg-white/5 border border-white/10 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 hover:border-white/20 active:scale-[0.98]"
+        >
+          Start Project
+        </a>
+      </header>
+
+      <section className="grid gap-16 py-20 xl:grid-cols-[1.1fr,0.9fr] xl:items-center">
+        <div className="animate-reveal">
+          <div className="inline-flex rounded-full border border-accent/20 bg-accent/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.4em] text-accent">
+            Gemini 1.5 Pro + Climate Engine
           </div>
-          <a
-            href="#builder"
-            className="rounded-full bg-white/5 border border-white/10 px-6 py-2.5 text-sm font-bold text-white transition-all hover:bg-white/10 hover:border-white/20 active:scale-[0.98]"
-          >
-            Start Project
-          </a>
-        </header>
+          <h1 className="mt-8 max-w-4xl font-heading text-7xl leading-[1.05] text-white md:text-9xl tracking-tighter uppercase">
+            GreenBuild <span className="text-accent">AI</span>
+          </h1>
+          <p className="mt-10 max-w-2xl text-xl leading-relaxed text-white/50">
+            High-performance material options, carbon impact tracking, and delivery implications in seconds.
+          </p>
+        </div>
 
-        <section className="grid gap-16 py-20 xl:grid-cols-[1.1fr,0.9fr] xl:items-center">
-          <div className="animate-reveal">
-            <div className="inline-flex rounded-full border border-accent/20 bg-accent/5 px-4 py-2 text-[10px] font-black uppercase tracking-[0.4em] text-accent">
-              Gemini 1.5 Pro + Climate Engine
-            </div>
-            <h1 className="mt-8 max-w-4xl font-heading text-6xl leading-[1.05] text-white md:text-8xl tracking-tighter">
-              Sustainable <span className="text-accent">logic</span> rendered as a live system.
-            </h1>
-            <p className="mt-10 max-w-2xl text-xl leading-relaxed text-white/50">
-              GreenBuild AI turns a simple intake into high-performance material options, carbon impact tracking, and delivery implications in seconds.
-            </p>
-
-            <div className="mt-16 grid gap-6 md:grid-cols-3">
-              <FeatureCard title="Component Matrix" text="10+ systems ranked with ranked green alternatives." />
-              <FeatureCard title="Climate Sync" text="Direct integration with live environmental data." />
-              <FeatureCard title="Carbon Index" text="Materialized embodied carbon reduction tracking." />
-            </div>
-          </div>
-
-          <div className="relative animate-reveal animation-delay-200">
-            <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-accent/10 blur-[120px]" />
-            <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-emerald-500/10 blur-[120px]" />
-            <div className="relative rounded-[48px] glass p-10 shadow-glow">
-              <div className="grid gap-6">
-                {[
-                  ["Carbon Logic", "-31.4%", "Lifecycle saving"],
-                  ["Budget Shift", "+4.8%", "Premium offset"],
-                  ["ISC Score", "84.6", "Sustainability rank"],
-                ].map(([label, value, sub]) => (
-                  <div key={label} className="group rounded-[32px] bg-white/5 border border-white/5 p-8 transition-all hover:bg-white/10">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">{label}</p>
-                    <p className="mt-4 font-heading text-5xl text-white tracking-tighter group-hover:text-accent transition-colors">{value}</p>
-                    <p className="mt-1 text-[11px] font-bold text-white/30 truncate">{sub}</p>
-                  </div>
-                ))}
+        <div className="relative animate-reveal animation-delay-200">
+          <div className="absolute -left-20 top-10 h-64 w-64 rounded-full bg-accent/10 blur-[120px]" />
+          <div className="absolute -right-20 bottom-0 h-64 w-64 rounded-full bg-emerald-500/10 blur-[120px]" />
+          <div className="relative aspect-square flex items-center justify-center rounded-[48px] glass p-16 shadow-glow transition-all hover:scale-[1.02]">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute h-32 w-32 rounded-full bg-accent/20 blur-2xl animate-pulse" />
+              <div className="relative h-24 w-24 rounded-3xl bg-accent flex items-center justify-center font-heading text-5xl font-bold text-bg shadow-2xl">
+                G
+              </div>
+              <div className="absolute -bottom-12 text-[10px] font-black uppercase tracking-[0.5em] text-white/20 whitespace-nowrap">
+                Project Brand Space
               </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="builder" className="grid gap-10 xl:grid-cols-[0.8fr,1.2fr] xl:items-start">
-          <div className="pt-4">
-            <p className="text-xs uppercase tracking-[0.35em] text-accent/70">Workflow</p>
-            <h2 className="mt-4 font-heading text-4xl text-white">Capture the project. Let Gemini structure the sustainable path.</h2>
-            <p className="mt-5 max-w-xl text-white/60">
-              The backend enriches your form with climate data, generates a structured alternatives matrix, stores the result locally, and makes it available for dashboards, PDFs, and chat.
-            </p>
+      <section className="py-24 animate-reveal">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <FeatureCard title="Component Matrix" text="10+ systems ranked with green alternatives." />
+          <FeatureCard title="Climate Sync" text="Live environmental data integration." />
+          <FeatureCard title="Carbon Index" text="Embodied carbon reduction tracking." />
+          <FeatureCard title="Strategy Engine" text="Context-aware implementation steps for every material." />
+        </div>
+      </section>
+
+      <section id="builder" className="py-32 flex justify-center border-t border-white/5">
+        <div className="w-full max-w-5xl">
+          <div className="mb-16 text-center animate-reveal">
+            <h2 className="font-heading text-4xl text-white tracking-tight">Initiate Project Analysis</h2>
+            <p className="mt-4 text-white/40 text-lg">Configure your project specs below to begin the Gemini optimization workflow.</p>
           </div>
-
           <MultiStepForm
             climatePreview={climatePreview}
             loading={loading}
             onPreviewClimate={handleClimatePreview}
             onSubmit={handleSubmit}
           />
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
@@ -142,33 +130,25 @@ function ResultsPage() {
     async function loadResult() {
       try {
         const data = await api.results(slug);
-        if (!active) {
-          return;
-        }
+        if (!active) return;
         setResult(data);
         setSelectedComponent(data.components[0]?.component || "");
         setChatHistory(data.chat_history || []);
       } catch (loadError) {
         if (!jobId) {
-          if (active) {
-            setError("Result not found.");
-          }
+          if (active) setError("Result not found.");
           return;
         }
 
         intervalId = window.setInterval(async () => {
           try {
             const status = await api.status(jobId);
-            if (!active) {
-              return;
-            }
+            if (!active) return;
             setJob(status);
             if (status.status === "completed") {
               window.clearInterval(intervalId);
               const resolved = await api.results(slug);
-              if (!active) {
-                return;
-              }
+              if (!active) return;
               setResult(resolved);
               setSelectedComponent(resolved.components[0]?.component || "");
               setChatHistory(resolved.chat_history || []);
@@ -189,9 +169,7 @@ function ResultsPage() {
 
     return () => {
       active = false;
-      if (intervalId) {
-        window.clearInterval(intervalId);
-      }
+      if (intervalId) window.clearInterval(intervalId);
     };
   }, [jobId, slug]);
 
@@ -199,16 +177,13 @@ function ResultsPage() {
 
   function appendChat(message, replaceLast = false) {
     setChatHistory((current) => {
-      if (replaceLast) {
-        return [...current.slice(0, -1), message];
-      }
+      if (replaceLast) return [...current.slice(0, -1), message];
       return [...current, message];
     });
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-5 py-8 md:px-8 lg:px-10 animate-reveal">
-      <Backdrop />
+    <main className="relative min-h-screen px-5 py-8 md:px-8 lg:px-10 animate-reveal">
       <div className="relative mx-auto max-w-7xl">
         {error && (
           <div className="rounded-3xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-red-200">
@@ -250,12 +225,11 @@ function FeatureCard({ title, text }) {
 
 function Backdrop() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-accent/12 blur-3xl" />
-      <div className="absolute right-[-8%] top-[15%] h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-      <div className="absolute bottom-[-15%] left-[25%] h-96 w-96 rounded-full bg-lime-500/10 blur-3xl" />
+    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div className="blob left-[-10%] top-[-10%] h-[600px] w-[600px] bg-accent/10 opacity-60" style={{ animationDelay: '0s' }} />
+      <div className="blob right-[-5%] top-[10%] h-[500px] w-[500px] bg-emerald-500/10 opacity-40" style={{ animationDelay: '-5s' }} />
+      <div className="blob left-[20%] bottom-[-10%] h-[700px] w-[700px] bg-accent/5 opacity-50" style={{ animationDelay: '-10s' }} />
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:64px_64px] opacity-[0.16]" />
     </div>
   );
 }
-

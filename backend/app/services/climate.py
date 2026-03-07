@@ -10,10 +10,18 @@ class ClimateService:
 
     def fetch_climate(self, location: str) -> dict[str, Any]:
         try:
+            # Detect country hint (e.g., "Kochi, India")
+            country_hint = None
+            search_query = location
+            if "," in location:
+                parts = [p.strip() for p in location.split(",")]
+                search_query = parts[0]
+                country_hint = parts[-1].lower()
+
             with httpx.Client(timeout=20.0) as client:
                 geo_response = client.get(
                     self.geocode_url,
-                    params={"name": location, "count": 1, "language": "en", "format": "json"},
+                    params={"name": search_query, "count": 10, "language": "en", "format": "json"},
                 )
                 geo_response.raise_for_status()
                 geo_data = geo_response.json()
@@ -21,7 +29,14 @@ class ClimateService:
                 if not results:
                     raise ValueError(f"Location not found: {location}")
 
+                # Prioritize based on country hint
                 place = results[0]
+                if country_hint:
+                    for r in results:
+                        if country_hint in r.get("country", "").lower():
+                            place = r
+                            break
+                
                 latitude = place["latitude"]
                 longitude = place["longitude"]
                 forecast_response = client.get(
@@ -55,10 +70,14 @@ class ClimateService:
                     "latitude": latitude,
                     "longitude": longitude,
                     "temperature_c": current.get("temperature_2m", 24),
+                    "temp_max": daily.get("temperature_2m_max", [28])[0],
+                    "temp_min": daily.get("temperature_2m_min", [18])[0],
                     "wind_speed_kph": current.get("wind_speed_10m", 10),
                     "precipitation_mm": current.get("precipitation", 0),
                     "humidity_pct": current.get("relative_humidity_2m", 50),
                     "next_days_summary": next_days_summary,
+                    "source": "Open-Meteo Global Forecasting",
+                    "basis": "Daily Extremes (Design Basis)",
                 }
         except Exception:
             return {
