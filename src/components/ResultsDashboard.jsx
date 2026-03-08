@@ -4,10 +4,15 @@ import {
   BarChart,
   Cell,
   PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   RadialBar,
   RadialBarChart,
   ResponsiveContainer,
   Tooltip,
+  Legend,
   XAxis,
   YAxis,
 } from "recharts";
@@ -81,11 +86,21 @@ export function ResultsDashboard({
     const avgCarbon = (finalMetrics.reduce((sum, m) => sum + m.metrics.carbon_reduction_pct, 0) / finalMetrics.length).toFixed(1);
     const avgCost = (finalMetrics.reduce((sum, m) => sum + m.metrics.cost_delta_pct, 0) / finalMetrics.length).toFixed(1);
     const avgSpeed = (finalMetrics.reduce((sum, m) => sum + m.metrics.speed_delta_pct, 0) / finalMetrics.length).toFixed(1);
+    const avgScore = (finalMetrics.reduce((sum, m) => sum + (m.isAi ? (m.metrics.sustainability_score || 50) : 50), 0) / finalMetrics.length).toFixed(1);
 
     const graphData = [
       { name: "Carbon Savings %", value: parseFloat(avgCarbon), fill: "#22C55E" },
       { name: "Cost Impact %", value: parseFloat(avgCost), fill: parseFloat(avgCost) <= 0 ? "#22C55E" : "#F87171" },
       { name: "Sched. Impact %", value: parseFloat(avgSpeed), fill: parseFloat(avgSpeed) >= 0 ? "#22C55E" : "#F87171" },
+    ];
+
+    const radarData = [
+      { subject: 'Carbon Reduction', baseline: 50, ai: 50 + parseFloat(avgCarbon) },
+      { subject: 'Cost Efficiency', baseline: 50, ai: 50 - parseFloat(avgCost) },
+      { subject: 'Construction Speed', baseline: 50, ai: 50 + parseFloat(avgSpeed) },
+      { subject: 'Comfort of Living', baseline: 50, ai: parseFloat(avgScore) },
+      { subject: 'Durability', baseline: 50, ai: 50 + (parseFloat(avgScore) - 50) * 1.5 },
+      { subject: 'Maintenance', baseline: 50, ai: 50 + parseFloat(avgCarbon) * 0.6 },
     ];
 
     const reqCerts = result.request?.certifications || [];
@@ -100,7 +115,7 @@ export function ResultsDashboard({
       certStatuses.push({
         name: `LEED ${leedLvl}`,
         achieved: avgCarbon >= requiredCarbon,
-        reason: avgCarbon >= requiredCarbon 
+        reason: avgCarbon >= requiredCarbon
           ? `Carbon reduction (${avgCarbon}%) exceeds ${requiredCarbon}% requirement`
           : `Requires ${requiredCarbon}% carbon reduction (currently ${avgCarbon}%)`
       });
@@ -136,9 +151,31 @@ export function ResultsDashboard({
 
     return (
       <div className="animate-reveal max-w-5xl mx-auto space-y-10 py-10">
-        <div className="text-center space-y-4">
-          <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Interactive Build Plan</h1>
-          <p className="text-white/50 text-xl font-medium">Toggle AI recommendations to see real-time impact on your project</p>
+        <div className="grid lg:grid-cols-2 gap-10 items-center">
+          <div className="space-y-4 text-center lg:text-left">
+            <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Interactive Build Plan</h1>
+            <p className="text-white/50 text-xl font-medium">Toggle AI recommendations to see real-time impact on your project</p>
+          </div>
+          <div className="h-[450px] w-full bg-[#0A0D0B] rounded-[36px] border border-white/5 p-4 relative group">
+            <div className="absolute top-6 left-8 z-10">
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-white/30">System Trade-offs</p>
+            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <RadarChart cx="50%" cy="50%" outerRadius="60%" margin={{ top: 20, right: 40, bottom: 20, left: 40 }} data={radarData}>
+                <PolarGrid stroke="rgba(255,255,255,0.15)" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: 'bold' }} />
+                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                <Radar name="Original Spec" dataKey="baseline" stroke="#F87171" strokeWidth={2} fill="#F87171" fillOpacity={0.15} className="transition-all duration-300 group-hover:fill-opacity-30" />
+                <Radar name="AI Recommended" dataKey="ai" stroke="#22C55E" strokeWidth={2} fill="#22C55E" fillOpacity={0.4} className="transition-all duration-300 group-hover:fill-opacity-60" />
+                <Tooltip
+                  cursor={{ stroke: 'rgba(255,255,255,0.1)' }}
+                  contentStyle={{ background: '#050807', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}
+                  itemStyle={{ fontSize: 13, fontWeight: 'bold' }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12, fontWeight: 'bold', paddingTop: '10px' }} />
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Global Dynamic Impact */}
@@ -161,8 +198,8 @@ export function ResultsDashboard({
             </div>
           </div>
           <div className="space-y-4">
-             <StatCard label="Total Carbon Redux" value={`${avgCarbon > 0 ? '-' : '+'}${Math.abs(avgCarbon)}%`} sub="Overall Impact" />
-             <StatCard label="Total Cost Delta" value={`${avgCost > 0 ? '+' : ''}${avgCost}%`} sub="Overall Budget" />
+            <StatCard label="Total Carbon Redux" value={`${avgCarbon > 0 ? '-' : '+'}${Math.abs(avgCarbon)}%`} sub="Overall Impact" />
+            <StatCard label="Total Cost Delta" value={`${avgCost > 0 ? '+' : ''}${avgCost}%`} sub="Overall Budget" />
           </div>
         </div>
 
