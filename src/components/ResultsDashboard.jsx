@@ -55,59 +55,187 @@ export function ResultsDashboard({
   const [activeTab, setActiveTab] = useState("analysis");
   const [userSelections, setUserSelections] = useState({});
   const [showFinal, setShowFinal] = useState(false);
+  const [toggles, setToggles] = useState({});
 
   if (showFinal) {
+    const finalMetrics = result.components.map(comp => {
+      const isAi = toggles[comp.component] ?? true;
+      const selectedAltName = userSelections[comp.component] || comp.alternatives[0].name;
+      const selectedAlt = comp.alternatives.find(a => a.name === selectedAltName) || comp.alternatives[0];
+
+      return {
+        compName: comp.component,
+        isAi,
+        rank: comp.alternatives.findIndex(a => a.name === selectedAltName) + 1,
+        metrics: isAi ? selectedAlt : {
+          carbon_reduction_pct: 0,
+          cost_delta_pct: 0,
+          speed_delta_pct: 0,
+          sustainability_score: "--",
+          name: comp.baseline,
+          summary: "Original baseline specification. No environmental or cost improvements.",
+        }
+      };
+    });
+
+    const avgCarbon = (finalMetrics.reduce((sum, m) => sum + m.metrics.carbon_reduction_pct, 0) / finalMetrics.length).toFixed(1);
+    const avgCost = (finalMetrics.reduce((sum, m) => sum + m.metrics.cost_delta_pct, 0) / finalMetrics.length).toFixed(1);
+    const avgSpeed = (finalMetrics.reduce((sum, m) => sum + m.metrics.speed_delta_pct, 0) / finalMetrics.length).toFixed(1);
+
+    const graphData = [
+      { name: "Carbon Savings %", value: parseFloat(avgCarbon), fill: "#22C55E" },
+      { name: "Cost Impact %", value: parseFloat(avgCost), fill: parseFloat(avgCost) <= 0 ? "#22C55E" : "#F87171" },
+      { name: "Sched. Impact %", value: parseFloat(avgSpeed), fill: parseFloat(avgSpeed) >= 0 ? "#22C55E" : "#F87171" },
+    ];
+
+    const reqCerts = result.request?.certifications || [];
+    const leedLvl = result.request?.leed_level || "Certified";
+
+    const certStatuses = [];
+    if (reqCerts.includes("LEED")) {
+      let requiredCarbon = 20;
+      if (leedLvl === "Silver") requiredCarbon = 30;
+      if (leedLvl === "Gold") requiredCarbon = 40;
+      if (leedLvl === "Platinum") requiredCarbon = 50;
+      certStatuses.push({
+        name: `LEED ${leedLvl}`,
+        achieved: avgCarbon >= requiredCarbon,
+        reason: avgCarbon >= requiredCarbon 
+          ? `Carbon reduction (${avgCarbon}%) exceeds ${requiredCarbon}% requirement`
+          : `Requires ${requiredCarbon}% carbon reduction (currently ${avgCarbon}%)`
+      });
+    }
+    if (reqCerts.includes("BREEAM")) {
+      certStatuses.push({
+        name: "BREEAM",
+        achieved: avgCarbon >= 35,
+        reason: avgCarbon >= 35 ? "Carbon & Ecology standards met" : "Requires 35% carbon abatement"
+      });
+    }
+    if (reqCerts.includes("IGBC")) {
+      certStatuses.push({
+        name: "IGBC",
+        achieved: avgCarbon >= 25 && avgCost <= 15,
+        reason: avgCarbon >= 25 && avgCost <= 15 ? "Efficiency & localized economy standards met" : "Fails carbon (\u226525%) or cost delta (\u226415%) threshold"
+      });
+    }
+    if (reqCerts.includes("WELL BUILDING STANDARD")) {
+      certStatuses.push({
+        name: "WELL",
+        achieved: avgCarbon >= 15,
+        reason: avgCarbon >= 15 ? "Material health and VOC thresholds met" : "VOC and material health requires min 15% green substitution"
+      });
+    }
+    if (reqCerts.includes("CASBEE")) {
+      certStatuses.push({
+        name: "CASBEE",
+        achieved: avgCarbon >= 30,
+        reason: avgCarbon >= 30 ? "BEE (Built Environment Efficiency) rating satisfied" : "BEE rating falls below 'A' class requirement"
+      });
+    }
+
     return (
-      <div className="animate-reveal max-w-5xl mx-auto space-y-12 py-10">
+      <div className="animate-reveal max-w-5xl mx-auto space-y-10 py-10">
         <div className="text-center space-y-4">
-          <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Your Custom Build Plan</h1>
-          <p className="text-white/50 text-xl font-medium">Final selected specifications for {result.project_name}</p>
+          <h1 className="text-5xl lg:text-6xl font-heading text-white tracking-tight">Interactive Build Plan</h1>
+          <p className="text-white/50 text-xl font-medium">Toggle AI recommendations to see real-time impact on your project</p>
         </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {result.components.map((comp, idx) => {
-            const selectedAltName = userSelections[comp.component] || comp.alternatives[0].name;
-            const selectedAlt = comp.alternatives.find(a => a.name === selectedAltName) || comp.alternatives[0];
-            const rank = comp.alternatives.findIndex(a => a.name === selectedAltName) + 1;
 
-            return (
-              <div key={comp.component} className="bg-[#0A0D0B] rounded-[36px] p-8 flex flex-col justify-between space-y-8 border-2 border-transparent hover:border-white/10 transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <span className="bg-white/10 text-white/40 border border-transparent text-[10px] font-black px-3 py-1 rounded-full uppercase">
-                    OPTION 0{rank}
-                  </span>
-                  <span className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em]">
-                    {selectedAlt.sustainability_score} SCORE
-                  </span>
+        {/* Global Dynamic Impact */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-[1fr,300px]">
+          <div className="rounded-[36px] bg-white/5 border border-white/10 p-8 space-y-6">
+            <h3 className="font-heading text-2xl text-white">Cumulative Project Impact vs Original Baseline</h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={graphData} layout="vertical" margin={{ top: 0, right: 40, left: 0, bottom: 0 }}>
+                  <XAxis type="number" hide />
+                  <YAxis dataKey="name" type="category" stroke="rgba(255,255,255,0.3)" width={120} tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: 'bold' }} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ background: '#050807', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }} />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} label={{ position: 'right', fill: 'white', fontSize: 12, formatter: (val) => `${val > 0 && graphData.find(g => g.value === val)?.name !== "Carbon Savings %" ? '+' : ''}${val}%` }}>
+                    {graphData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          <div className="space-y-4">
+             <StatCard label="Total Carbon Redux" value={`${avgCarbon > 0 ? '-' : '+'}${Math.abs(avgCarbon)}%`} sub="Overall Impact" />
+             <StatCard label="Total Cost Delta" value={`${avgCost > 0 ? '+' : ''}${avgCost}%`} sub="Overall Budget" />
+          </div>
+        </div>
+
+        {/* Dynamic Certifications */}
+        {certStatuses.length > 0 && (
+          <div className="rounded-[36px] bg-[#0A0D0B] border border-white/5 p-8 space-y-6">
+            <h3 className="font-heading text-2xl text-white">Live Certification Compliance Matrix</h3>
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+              {certStatuses.map(cert => (
+                <div key={cert.name} className={`border rounded-3xl p-5 transition-all duration-300 ${cert.achieved ? "bg-accent/10 border-accent/30 shadow-[0_0_20px_rgba(34,197,94,0.05)]" : "bg-red-500/5 border-red-500/20 grayscale opacity-80"}`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`h-2 w-2 rounded-full ${cert.achieved ? "bg-accent animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.8)]" : "bg-red-500"}`} />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/50">{cert.name}</span>
+                  </div>
+                  <p className={`mt-4 font-bold text-lg ${cert.achieved ? "text-accent" : "text-red-400"}`}>
+                    {cert.achieved ? "Attained" : "At Risk"}
+                  </p>
+                  <p className="mt-2 text-[11px] text-white/40 leading-relaxed min-h-[48px]">{cert.reason}</p>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-                <div className="space-y-4 flex-grow">
-                  <h4 className="font-heading text-2xl text-white leading-tight">{selectedAlt.name}</h4>
-                  <p className="text-sm leading-relaxed text-white/50 line-clamp-3">
-                    Rank {rank} for {comp.component.toLowerCase()}: {selectedAlt.summary || "Awaiting AI recommendation."}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {finalMetrics.map(({ compName, isAi, rank, metrics }) => (
+            <div key={compName} className={`bg-[#0A0D0B] rounded-[36px] p-8 flex flex-col justify-between space-y-6 border-2 transition-all duration-300 ${isAi ? "border-accent/40 shadow-[0_0_30px_rgba(34,197,94,0.05)]" : "border-white/5 hover:border-white/10"}`}>
+              <div className="flex items-center justify-between pb-4 border-b border-white/5">
+                <span className="text-sm font-bold text-white uppercase tracking-widest">{compName}</span>
+                <label className="relative inline-flex items-center cursor-pointer" title="Toggle AI Recommendation">
+                  <input type="checkbox" className="sr-only peer" checked={isAi} onChange={() => setToggles(p => ({ ...p, [compName]: !isAi }))} />
+                  <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent hover:bg-white/20"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className={`bg-white/10 text-[10px] font-black px-3 py-1 rounded-full border border-transparent uppercase ${isAi ? "bg-accent/20 text-accent border-accent/30" : "text-white/40"}`}>
+                  {isAi ? `AI OPTION 0${rank}` : "BASELINE"}
+                </span>
+                {isAi && (
+                  <span className="text-[11px] font-black text-white/30 uppercase tracking-[0.2em]">
+                    {metrics.sustainability_score} SCORE
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4 flex-grow">
+                <h4 className={`font-heading text-2xl leading-tight transition-colors ${isAi ? "text-white" : "text-white/50"}`}>{metrics.name}</h4>
+                <p className="text-sm leading-relaxed text-white/50 line-clamp-3">
+                  {metrics.summary}
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Carbon Impact</p>
+                  <p className={`text-lg font-bold ${metrics.carbon_reduction_pct > 0 ? "text-accent" : "text-white/40"}`}>
+                    {metrics.carbon_reduction_pct > 0 ? "-" : "+"}{Math.abs(metrics.carbon_reduction_pct)}%
                   </p>
                 </div>
-
-                <div className="pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Carbon</p>
-                    <p className={`text-lg font-bold ${selectedAlt.carbon_reduction_pct > 0 ? "text-accent" : "text-white"}`}>
-                      {selectedAlt.carbon_reduction_pct > 0 ? "-" : "+"}{Math.abs(selectedAlt.carbon_reduction_pct)}%
-                    </p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Cost</p>
-                    <p className={`text-lg font-bold ${selectedAlt.cost_delta_pct <= 0 ? "text-accent" : "text-white/80"}`}>
-                      {selectedAlt.cost_delta_pct > 0 ? "+" : ""}{selectedAlt.cost_delta_pct}%
-                    </p>
-                  </div>
+                <div className="space-y-1 text-right">
+                  <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Cost Impact</p>
+                  <p className={`text-lg font-bold ${metrics.cost_delta_pct <= 0 && isAi ? "text-accent" : "text-white/40"}`}>
+                    {metrics.cost_delta_pct > 0 ? "+" : ""}{metrics.cost_delta_pct}%
+                  </p>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
-        <div className="flex justify-center flex-wrap gap-4 pt-8">
+        <div className="flex justify-center flex-wrap gap-4 pt-8 border-t border-white/10">
           <button onClick={() => setShowFinal(false)} className="bg-white/5 hover:bg-white/10 text-white px-10 py-4 rounded-full font-bold transition-all uppercase tracking-widest text-sm border border-white/10">
-            Review Selections
+            Back to Analysis
           </button>
           <a
             href={`${api.base}/report/${result.slug}`}
@@ -115,7 +243,7 @@ export function ResultsDashboard({
             rel="noreferrer"
             className="flex items-center gap-3 rounded-full bg-white px-8 py-4 font-bold text-bg transition-all hover:scale-[1.03] active:scale-[0.98] uppercase tracking-widest text-sm"
           >
-            <span>Export Analysis</span>
+            <span>Export Final Plan</span>
             <DownloadIcon className="h-5 w-5" />
           </a>
         </div>
