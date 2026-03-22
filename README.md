@@ -1,4 +1,4 @@
-# GreenBuild AI
+# Sage Alternatives
 
 A full-stack sustainable construction workflow app built with React 18, Vite, Tailwind CSS, FastAPI, Gemini 2.5 Flash, Open-Meteo, fpdf2, and local JSON storage.
 
